@@ -1,0 +1,17 @@
+# Terraform
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+terraform.tfvars
+
+# Ansible / Secrets
+*.pem
+*.key
+*.retry
+*.vault
+
+# OS / IDE
+.DS_Store
+.vscode/
+.idea/

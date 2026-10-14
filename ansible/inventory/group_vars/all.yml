@@ -1,0 +1,3 @@
+---# Global Ansible variables applied to all nodes across all clouds
+ansible_user: kalim
+system_timezone: Indian/Mauritius

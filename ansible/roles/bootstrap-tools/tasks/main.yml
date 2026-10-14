@@ -1,0 +1,6 @@
+---
+- name: Ensure required tools directory exists
+  file:
+    path: /opt/stackpulse/bin
+    state: directory
+    mode: '0755'

@@ -1,0 +1,7 @@
+---
+- name: Configure Stackpulse Infrastructure Nodes
+  hosts: all
+  become: yes
+  roles:
+    - common
+    - bootstrap-tools
