@@ -1,1 +1,0 @@
-# Stackpulse Azure Environment

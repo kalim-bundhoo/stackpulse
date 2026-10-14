@@ -1,1 +1,0 @@
-# Stackpulse AWS Environment
