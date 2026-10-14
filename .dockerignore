@@ -1,0 +1,8 @@
+.git
+.github/
+*.tfstate
+*.tfstate.*
+.terraform/
+*.pem
+*.key
+.DS_Store
