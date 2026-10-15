@@ -1,40 +1,39 @@
-# Stage 1: Build / Preparation Stage
 FROM ubuntu:24.04 AS builder
-ENV DEBIAN_FRONTEND=noninteractive
 
-WORKDIR /build
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY . .
+
+FROM ubuntu:24.04 AS runtime
+
+LABEL maintainer="Platform Engineering <devops@stackpulse.internal>"
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    USERNAME=appuser \
+    USER_UID=1001 \
+    USER_GID=1001
+
+RUN groupadd --gid ${USER_GID} ${USERNAME} 2>/dev/null || true \
+    && useradd --uid ${USER_UID} --gid ${USER_GID} -m -s /bin/bash ${USERNAME} 2>/dev/null || true
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
     curl \
-    git \
-    unzip \
+    tini \
     && rm -rf /var/lib/apt/lists/*
 
-# Stage 2: Runtime Stage
-FROM ubuntu:24.04 AS runtime
-LABEL maintainer="kalim <stackpulse@local>"
-ENV DEBIAN_FRONTEND=noninteractive
+WORKDIR /app
+COPY --from=builder /app /app
 
-ARG USERNAME=iskalim
-ARG USER_UID=1000
-ARG USER_GID=$USER_UID
+RUN chown -R ${USERNAME}:${USERNAME} /app
 
-RUN groupadd --gid $USER_GID $USERNAME \
-    && useradd --uid $USER_UID --gid $USER_GID -m $USERNAME \
-    && apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    git \
-    sudo \
-    && echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME \
-    && chmod 0440 /etc/sudoers.d/$USERNAME \
-    && rm -rf /var/lib/apt/lists/*
+USER ${USERNAME}
 
-WORKDIR /opt/stackpulse
-
-COPY --chown=$USER_UID:$USER_GID . /opt/stackpulse
-
-USER $USERNAME
-
+ENTRYPOINT ["/usr/bin/tini", "--"]
 EXPOSE 8080
-
-CMD ["bash"]
+CMD ["echo", "Container running successfully"]
