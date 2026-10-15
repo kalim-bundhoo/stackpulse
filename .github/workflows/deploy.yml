@@ -1,0 +1,43 @@
+name: Provision Infrastructure via Ansible
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ROLE_ARN: arn:aws:iam::551504153839:role/GitHubActionsDeploymentRole
+
+jobs:
+  provision:
+    name: Run Ansible Provisioning
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+        python-version: '3.11'
+
+      - name: Install Ansible, Boto3, and AWS Collection
+        run: |
+          python -m pip install --upgrade pip
+          pip install ansible boto3 botocore
+          ansible-galaxy collection install amazon.aws
+
+      - name: Authenticate to AWS via OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ env.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: AnsibleProvisioningSession
+
+      - name: Run Ansible Playbook
+        run: |
+          ansible-playbook provision-ec2.yml
