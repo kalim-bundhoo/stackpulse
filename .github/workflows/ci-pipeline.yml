@@ -43,6 +43,10 @@ jobs:
     name: Build & Container Security
     needs: security-and-quality
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      security-events: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -107,6 +111,9 @@ jobs:
     needs: build-and-scan-container
     if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
