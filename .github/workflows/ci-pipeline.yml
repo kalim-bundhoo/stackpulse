@@ -37,7 +37,7 @@ jobs:
         uses: bridgecrewio/checkov-action@v12.298.0
         with:
           framework: terraform
-          soft_fail: false # Enforce security checks as a hard gate
+          args: --directory . --soft-fail false
 
       - name: Run Unit Tests
         run: |
