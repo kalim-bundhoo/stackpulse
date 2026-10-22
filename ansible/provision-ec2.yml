@@ -1,27 +1,13 @@
----
-- name: Provision Infrastructure via Ansible
-  hosts: localhost
-  connection: local
-  gather_facts: false
-
-  vars:
-    aws_region: "us-east-1"
-    instance_name: "stackpulse-prod-server"
-    instance_type: "t3.medium"
-    image_id: "ami-0c7217cdde317cfec" # Example Ubuntu 24.04 AMI
-    key_name: "stackpulse-prod-key"
-
-  tasks:
-    - name: Launch or update EC2 instance securely
+- name: Launch or update EC2 instance securely
       amazon.aws.ec2_instance:
         name: "{{ instance_name }}"
         region: "{{ aws_region }}"
         instance_type: "{{ instance_type }}"
         image_id: "{{ image_id }}"
         key_name: "{{ key_name }}"
-        ebs_optimized: true       # Resolves CKV_AWS_135 (Enables EBS optimization)
+        ebs_optimized: true
         network_interfaces:
-          - associate_public_ip_address: false # Resolves CKV_AWS_88 (Prevents public IP exposure)
+          - associate_public_ip_address: false
             device_index: 0
         state: running
         wait: true
@@ -29,7 +15,3 @@
           Environment: Production
           ManagedBy: Ansible
       register: ec2_output
-
-    - name: Display Instance Private IP
-      ansible.builtin.debug:
-        msg: "EC2 instance successfully provisioned with private IP: {{ ec2_output.instances[0].private_ip_address }}"

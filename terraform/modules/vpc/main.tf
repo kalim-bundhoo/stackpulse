@@ -5,7 +5,6 @@ resource "aws_vpc" "main" {
   tags                 = { Name = "stackpulse-${var.environment}-vpc" }
 }
 
-# Fix CKV2_AWS_12: Restrict default security group
 resource "aws_default_security_group" "default" {
   vpc_id = aws_vpc.main.id
 
@@ -24,7 +23,18 @@ resource "aws_default_security_group" "default" {
   }
 }
 
-# Fix CKV2_AWS_11: Enable VPC Flow Logs
+resource "aws_flow_log" "vpc_flow_log" {
+  vpc_id          = aws_vpc.main.id
+  traffic_type    = "ALL"
+  iam_role_arn    = aws_iam_role.vpc_flow_log_role.arn
+  log_destination = aws_cloudwatch_log_group.vpc_flow_log_group.arn
+}
+
+resource "aws_cloudwatch_log_group" "vpc_flow_log_group" {
+  name              = "/aws/vpc-flow-log/stackpulse-${var.environment}"
+  retention_in_days = 30
+}
+
 resource "aws_iam_role" "vpc_flow_log_role" {
   name = "stackpulse-${var.environment}-vpc-flow-log-role"
 
@@ -62,16 +72,4 @@ resource "aws_iam_role_policy" "vpc_flow_log_policy" {
       }
     ]
   })
-}
-
-resource "aws_cloudwatch_log_group" "vpc_flow_log_group" {
-  name              = "/aws/vpc-flow-log/stackpulse-${var.environment}"
-  retention_in_days = 30
-}
-
-resource "aws_flow_log" "main" {
-  iam_role_arn    = aws_iam_role.vpc_flow_log_role.arn
-  log_destination = aws_cloudwatch_log_group.vpc_flow_log_group.arn
-  traffic_type    = "ALL"
-  vpc_id          = aws_vpc.main.id
 }
