@@ -34,10 +34,9 @@ jobs:
           extra_args: --debug --only-verified
 
       - name: Run Checkov (IaC Security)
-        uses: bridgecrewio/checkov-action@v12.298.0
-        with:
-          framework: terraform
-          args: --directory . --soft-fail false
+        run: |
+          pipx install checkov
+          checkov --directory . --soft-fail false
 
       - name: Run Unit Tests
         run: |
