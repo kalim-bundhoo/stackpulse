@@ -1,6 +1,7 @@
 data "aws_ami" "amazon_linux" {
   most_recent = true
   owners      = ["amazon"]
+
   filter {
     name   = "name"
     values = ["al2023-ami-2023.*-x86_64"]
@@ -8,14 +9,19 @@ data "aws_ami" "amazon_linux" {
 }
 
 resource "aws_iam_role" "ec2_ssm_role" {
-  name = "stackpulse-${var.environment}-ec2-ssm-role"
+  name = "stackpulse-ec2-ssm-role"
+
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [{
-      Action = "sts:AssumeRole"
-      Effect = "Allow"
-      Principal = { Service = "ec2.amazonaws.com" }
-    }]
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
   })
 }
 
@@ -25,7 +31,7 @@ resource "aws_iam_role_policy_attachment" "ssm_server" {
 }
 
 resource "aws_iam_instance_profile" "ec2_profile" {
-  name = "stackpulse-${var.environment}-ec2-profile"
+  name = "stackpulse-ec2-instance-profile"
   role = aws_iam_role.ec2_ssm_role.name
 }
 
@@ -36,6 +42,17 @@ resource "aws_instance" "web" {
   vpc_security_group_ids = [var.web_sg_id]
   iam_instance_profile   = aws_iam_instance_profile.ec2_profile.name
   key_name               = var.key_name
+  ebs_optimized          = true
+  monitoring             = true
+
+  metadata_options {
+    http_tokens   = "required"
+    http_endpoint = "enabled"
+  }
+
+  root_block_device {
+    encrypted = true
+  }
 
   tags = { Name = "stackpulse-${var.environment}-web-server" }
 }
@@ -47,28 +64,30 @@ resource "aws_lb" "web_alb" {
   security_groups    = [var.web_sg_id]
   subnets            = var.public_subnet_ids
 
+  drop_invalid_header_fields = true
+  deletion_protection        = true
+
   tags = { Name = "stackpulse-${var.environment}-alb" }
 }
 
 resource "aws_lb_target_group" "web_tg" {
-  name     = "stackpulse-${var.environment}-tg"
-  port     = 80
-  protocol = "HTTP"
-  vpc_id   = var.vpc_id
+  name        = "stackpulse-${var.environment}-tg"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "instance"
 
   health_check {
+    enabled             = true
     path                = "/"
-    matcher             = "200-399"
+    port                = "80"
+    protocol            = "HTTP"
+    matcher             = "200-299"
     interval            = 30
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
+    timeout             = 5
+    healthy_threshold   = 3
+    unhealthy_threshold = 3
   }
-}
-
-resource "aws_lb_target_group_attachment" "web_attachment" {
-  target_group_arn = aws_lb_target_group.web_tg.arn
-  target_id        = aws_instance.web.id
-  port             = 80
 }
 
 resource "aws_lb_listener" "http" {

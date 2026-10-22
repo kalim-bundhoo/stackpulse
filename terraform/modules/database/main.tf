@@ -1,12 +1,13 @@
+resource "aws_db_subnet_group" "db_subnets" {
+  name       = "stackpulse-${var.environment}-db-subnet-group"
+  subnet_ids = var.private_subnet_ids
+
+  tags = { Name = "stackpulse-${var.environment}-db-subnet-group" }
+}
+
 resource "random_password" "db_password" {
   length  = 16
   special = false
-}
-
-resource "aws_db_subnet_group" "db_subnets" {
-  name       = "stackpulse-${var.environment}-db-subnets"
-  subnet_ids = var.private_subnet_ids
-  tags       = { Name = "stackpulse-${var.environment}-db-subnet-group" }
 }
 
 resource "aws_db_instance" "postgres" {
@@ -23,8 +24,12 @@ resource "aws_db_instance" "postgres" {
   multi_az                  = var.multi_az
   db_subnet_group_name      = aws_db_subnet_group.db_subnets.name
   vpc_security_group_ids    = [var.db_sg_id]
-  backup_retention_period   = 0
-  skip_final_snapshot       = true
+  
+  backup_retention_period   = 7
+  deletion_protection       = true
+  skip_final_snapshot       = false
+  final_snapshot_identifier = "stackpulse-${var.environment}-db-final-snapshot"
+  auto_minor_version_upgrade = true
 
   tags = { Name = "stackpulse-${var.environment}-postgres" }
 }
