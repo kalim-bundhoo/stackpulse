@@ -36,4 +36,9 @@ USER ${USERNAME}
 
 ENTRYPOINT ["/usr/bin/tini", "--"]
 EXPOSE 8080
+
+# Added to satisfy Checkov CKV_DOCKER_2 (Ensure HEALTHCHECK instructions have been added)
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD curl -f http://localhost:8080/ || exit 1
+
 CMD ["echo", "Container running successfully"]
