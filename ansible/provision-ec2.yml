@@ -1,29 +1,28 @@
 ---
-- name: Provision an EC2 Instance in AWS
+- name: Provision Infrastructure via Ansible
   hosts: localhost
   connection: local
   gather_facts: false
-  
+
   vars:
-    aws_region: us-east-1
-    instance_name: "my-github-actions-instance"
-    instance_type: "t3.micro"
-    # Example AMI (Amazon Linux 2023 - adjust for your region)
-    image_id: "ami-0453ec754f44f9a4a" 
-    key_name: "my-dev-key"
+    aws_region: "us-east-1"
+    instance_name: "stackpulse-prod-server"
+    instance_type: "t3.medium"
+    image_id: "ami-0c7217cdde317cfec" # Example Ubuntu 24.04 AMI
+    key_name: "stackpulse-prod-key"
 
   tasks:
-    - name: Ensure amazon.aws collection requirements are installed
-      ansible.builtin.debug:
-        msg: "Starting EC2 provisioning..."
-
-    - name: Launch or update EC2 instance
+    - name: Launch or update EC2 instance securely
       amazon.aws.ec2_instance:
         name: "{{ instance_name }}"
         region: "{{ aws_region }}"
         instance_type: "{{ instance_type }}"
         image_id: "{{ image_id }}"
         key_name: "{{ key_name }}"
+        ebs_optimized: true       # Resolves CKV_AWS_135 (Enables EBS optimization)
+        network_interfaces:
+          - associate_public_ip_address: false # Resolves CKV_AWS_88 (Prevents public IP exposure)
+            device_index: 0
         state: running
         wait: true
         tags:
@@ -31,6 +30,6 @@
           ManagedBy: Ansible
       register: ec2_output
 
-    - name: Display Instance Public IP
+    - name: Display Instance Private IP
       ansible.builtin.debug:
-        msg: "The instance {{ instance_name }} is running with IP {{ ec2_output.instances[0].public_ip_address }}"
+        msg: "EC2 instance successfully provisioned with private IP: {{ ec2_output.instances[0].private_ip_address }}"
