@@ -36,7 +36,7 @@ jobs:
       - name: Run Checkov (IaC Security)
         run: |
           pipx install checkov
-          checkov --directory . --soft-fail false
+          checkov --directory .
 
       - name: Run Unit Tests
         run: |
