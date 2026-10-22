@@ -78,7 +78,7 @@ jobs:
           path: sbom.spdx.json
 
       - name: Run Trivy Vulnerability Scanner
-        uses: aquasecurity/trivy-action@v0.29.0
+        uses: aquasecurity/trivy-action@v0.35.0
         with:
           image-ref: 'stackpulse-app:${{ github.sha }}'
           format: 'sarif'
