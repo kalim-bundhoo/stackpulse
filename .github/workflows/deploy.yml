@@ -3,41 +3,66 @@ name: Provision Infrastructure via Ansible
 on:
   push:
     branches: [ "main" ]
+  workflow_dispatch: # Allows manual triggering if needed
 
-permissions:
-  id-token: write
-  contents: read
+# Prevent concurrent infrastructure deployments from conflicting
+concurrency:
+  group: ansible-provisioning-${{ github.ref }}
+  cancel-in-progress: false
 
-env:
-  AWS_REGION: us-east-1
-  AWS_ROLE_ARN: arn:aws:iam::551504153839:role/GitHubActionsDeploymentRole
+# Minimal default permissions (least privilege)
+permissions: {}
 
 jobs:
   provision:
     name: Run Ansible Provisioning
     runs-on: ubuntu-latest
+    timeout-minutes: 30 # Avoid hanging jobs running up billing
+
+    # Grant only the permissions needed for this specific job
+    permissions:
+      id-token: write # Required for AWS OIDC
+      contents: read  # Required for actions/checkout
+
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v4
+        # Pinning to full commit SHA prevents supply chain tampering
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false # Avoid leaving GitHub tokens in the local git config
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
         with:
-        python-version: '3.11'
+          python-version: '3.11'
+          cache: 'pip' # Automatically caches installed pip wheels
 
-      - name: Install Ansible, Boto3, and AWS Collection
+      - name: Cache Ansible Collections
+        uses: actions/cache@d4323d450c059c7a65073c2a67eec38377e4e1b6 # v4.2.2
+        with:
+          path: ~/.ansible/collections
+          key: ${{ runner.os }}-ansible-amazon-aws-${{ hashFiles('requirements.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-ansible-amazon-aws-
+
+      - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install ansible boto3 botocore
+          pip install --no-cache-dir ansible boto3 botocore
           ansible-galaxy collection install amazon.aws
 
       - name: Authenticate to AWS via OIDC
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@e3ddf14a3dc0f89df5907c1b8bf1c4257583b383 # v4.0.2
         with:
-          role-to-assume: ${{ env.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }} # Store role ARN in GitHub Variables/Secrets
+          aws-region: ${{ vars.AWS_REGION || 'us-east-1' }}
           role-session-name: AnsibleProvisioningSession
+          audience: sts.amazonaws.com # Explicit audience restriction
 
       - name: Run Ansible Playbook
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: "true"
+          ANSIBLE_FORCE_COLOR: "true"
+          PYTHONUNBUFFERED: "1"
         run: |
           ansible-playbook provision-ec2.yml
